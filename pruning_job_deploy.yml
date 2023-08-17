@@ -1,0 +1,8 @@
+---
+- name: test
+  hosts: '{{ target }}'
+  become: true
+  gather_facts: false
+
+  roles:
+    - pruning

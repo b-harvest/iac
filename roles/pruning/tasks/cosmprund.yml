@@ -1,0 +1,29 @@
+---
+- name: Clone the repository
+  git:
+    repo: '{{ cosmprund_repo }}'
+    dest: '/home/ubuntu/cosmprund'
+    version: master
+    update: yes
+    force: yes
+    recursive: no
+
+- name: Run make build
+  command: 'make build'
+  args:
+    chdir: '/home/ubuntu/cosmprund'
+  environment:
+    PATH: '{{ path }}'
+    GOROOT: '/usr/local/go'
+    GOPATH: '{{ user_dir }}/goApps'
+
+- name: Change ownership
+  file:
+    path: '/home/ubuntu/cosmprund'
+    owner: ubuntu
+    group: ubuntu
+    recurse: yes
+    state: directory
+
+- name: Move the binary to /home/ubuntu/goApps/bin
+  command: 'mv /home/ubuntu/cosmprund/build/cosmprund {{ user_dir }}/goApps/bin'

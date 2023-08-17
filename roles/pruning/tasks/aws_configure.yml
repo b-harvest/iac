@@ -1,0 +1,52 @@
+---
+- name: Delete the folder
+  file:
+    path: /home/ubuntu/.aws
+    state: absent
+
+- name: Create .aws directory
+  file:
+    path: /home/ubuntu/.aws
+    state: directory
+    owner: '{{ ansible_user }}'
+    group: '{{ ansible_user }}'    
+    mode: '0775'
+
+- name: Create config file
+  file:
+    path: /home/ubuntu/.aws/config
+    state: touch
+    mode: '0600'
+
+- name: Create credentials file
+  file:
+    path: /home/ubuntu/.aws/credentials
+    state: touch
+    owner: '{{ ansible_user }}'
+    group: '{{ ansible_user }}'    
+    mode: '0600'
+
+- name: Configure AWS config
+  lineinfile:
+    path: /home/ubuntu/.aws/config
+    line: |
+      [default]
+      region = ap-northeast-2
+      output = json
+    owner: '{{ ansible_user }}'
+    group: '{{ ansible_user }}'    
+    state: present
+    create: yes
+
+- name: Configure AWS credentials
+  lineinfile:
+    path: /home/ubuntu/.aws/credentials
+    line: |
+      [default]
+      aws_access_key_id = {{ lookup('env', 'AWS_ACCESS_KEY_ID') }}
+      aws_secret_access_key = {{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}
+    owner: '{{ ansible_user }}'
+    group: '{{ ansible_user }}'
+    state: present
+    create: yes    
+  when: lookup('env', 'AWS_ACCESS_KEY_ID') is defined and lookup('env', 'AWS_SECRET_ACCESS_KEY') is defined

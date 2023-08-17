@@ -1,0 +1,32 @@
+all:
+  vars:
+    ansible_user: ubuntu                                          
+    ansible_port: 22
+    ansible_ssh_private_key_file: '/home/ubuntu/.ssh/ansible'               ## ansible private ssh key
+    ansible_python_interpreter: '/usr/bin/python3'
+    
+    user_dir: '/home/{{ ansible_user }}'
+    path: '/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin:/usr/local/go/bin'
+
+    s3_uri: S3_URI                                                          ## s3 URI : ex) 's3://fileserver'
+    ## 3rd party repo
+    cosmprund_repo: 'https://github.com/binaryholdings/cosmprund'
+    cosmospruner_repo: 'https://github.com/notional-labs/cosmprund.git'
+
+crescent:                                                                   ## host group name(usually chain name) 
+  vars:
+    folder: .{{ network }}
+  hosts:
+    crescent_test:                                                          ## host name
+      ansible_host: x.x.x.x                                                 ## remote server IP address
+      data_dir: '/data'                                                     ## CHAIN_HOME folder is will be ${DATA_DIR}//${NETWORK}
+      wasm: true|'file'                                                     ## wasm folder exists and name is 'wasm' set to True, if folder name is different(like band 'file') and named it
+      prune: 'pruner'                                                       ## pruner selection. 'cosmprund|pruner'
+      tx_index: true                                                        ## for indexer 'kv' node
+      compact: false                                                        ## at first time, for disk diminishing set to 'true'
+      prune_hour: 15                                                        ## pruning time based on UTC+0
+      prune_minute: 10                                                      ## pruning time based on UTC+0
+      snapshot: true                                                        ## if you want to upload snapshot to AWS s3 or compatible(like Minio)
+      extra:                                                                ## 3rd service for stopping during pruning
+        - 'orchestrator'
+        - 'oracle'

@@ -1,0 +1,28 @@
+---
+- name: pre-requisite
+  include_tasks: "requites.yml"
+
+- name: cosmprund
+  include_tasks: "cosmprund.yml"
+  when: prune is defined and prune == 'cosmprund'
+
+- name: cosmos-pruner
+  include_tasks: "cosmos_pruner.yml"
+  when: prune is defined and prune == 'pruner'
+
+- name: pruning script injection
+  include_tasks: "script_inject.yml"
+  when: prune is defined
+
+- name: aws_configure
+  include_tasks: "aws_configure.yml"
+  when: snapshot is defined and snapshot == true
+
+- name: Create cronjob
+  cron:
+    user: '{{ ansible_user }}'
+    name: ' {{ network }} pruning'
+    minute: '{{ prune_minute }}'
+    hour: '{{ prune_hour }}'
+    job: '/bin/bash -x {{ user_dir }}/daily_pruning.sh > /home/ubuntu/pruned.log'
+  when: prune is defined

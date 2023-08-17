@@ -1,0 +1,86 @@
+#!/bin/bash
+
+export TZ=Asia/Seoul
+
+# 3rd party service down
+{% if extra is defined %}
+{%   for service in extra %}
+sudo service {{ service }} stop
+echo "{{ service }} stopped"
+{%   endfor %}
+{% else %}
+# there is no 3rd-party
+{% endif %}
+
+# prune node
+echo "pruning start"
+sudo service {{ network }} stop
+echo "start pruning"
+echo $(date) && START=$(date +%s)
+sleep 5
+{% if prune == 'pruner' and tx_index is sameas true and compact is sameas true %}
+{{ user_dir }}/goApps/bin/cosmos-pruner prune {{ data_dir }}/{{ folder }}/data --app {{ network }} -b 10 --tx_index=true --compact=true --cosmos-sdk=true
+{% elif prune == 'pruner' and tx_index is sameas false and compact is sameas true %}
+{{ user_dir }}/goApps/bin/cosmos-pruner prune {{ data_dir }}/{{ folder }}/data --app {{ network }} -b 10 --tx_index=false --compact=true --cosmos-sdk=true
+{% elif prune == 'pruner' and tx_index is sameas true and compact is sameas false %}
+{{ user_dir }}/goApps/bin/cosmos-pruner prune {{ data_dir }}/{{ folder }}/data --app {{ network }} -b 10 --tx_index=true --compact=false --cosmos-sdk=true
+{% elif prune == 'pruner' and tx_index is sameas false and compact is sameas false %}
+{{ user_dir }}/goApps/bin/cosmos-pruner prune {{ data_dir }}/{{ folder }}/data --app {{ network }} -b 10 --tx_index=false --compact=false --cosmos-sdk=true
+{% else %}
+{{ user_dir }}/goApps/bin/cosmprund prune {{ data_dir }}/{{ folder }}/data -b 10 --cosmos-sdk=true
+{% endif %}
+echo "pruning is done"
+sleep 5
+
+# make sure the service is running
+sudo service {{ network }} start
+echo $(date) && END=$(date +%s)
+echo "pruning finished"
+echo $((END-START)) | awk '{printf("elapsed time is %02d:%02d\n", int($1/60) , int($1%60))}'
+sleep 30
+
+{% if snapshot is defined and snapshot is sameas true %}
+# get block height
+BLOCK_HEIGHT=$(curl -s http://localhost:26657/status | jq -r .result.sync_info.latest_block_height)
+
+# Stop service
+sudo service {{ network }} stop
+
+# Compress the folder based on the block wasm existence
+FILENAME=$(echo {{ network }}_${BLOCK_HEIGHT}.tar.lz4)
+cd {{ data_dir }}/{{ folder }}
+{%  if wasm is defined and wasm is sameas true %}
+WASM_FILENAME='wasmonly.tar.lz4'
+tar --exclude='snapshots' --exclude='tx_index.db' -cvf - data wasm | lz4 > "{{ data_dir }}/$FILENAME"
+tar -cvf - wasm | lz4 > "{{ data_dir }}/$WASM_FILENAME"
+{%  elif wasm is defined and wasm == 'file' %}
+WASM_FILENAME='wasmonly.tar.lz4'
+tar --exclude='snapshots' --exclude='tx_index.db' -cvf - data file | lz4 > "{{ data_dir }}/$FILENAME"
+tar -cvf - wasm | lz4 > "{{ data_dir }}/$WASM_FILENAME"
+{%  else %}
+tar --exclude='snapshots' --exclude='tx_index.db' -cvf - data | lz4 > "{{ data_dir }}/$FILENAME"
+{%  endif %}
+
+# Restart the service
+sudo service {{ network }} start
+sleep 5
+
+# Transfer the file and then remove the file
+cd {{ data_dir }}
+/usr/bin/aws s3 cp "${FILENAME}" "{{ s3_uri }}/{{ network }}/"
+rm -rf "${FILENAME}"
+
+{%  if wasm is defined %}
+cd {{ data_dir }}
+/usr/bin/aws s3 cp "${WASM_FILENAME}" "{{ s3_uri }}/{{ network }}/"
+rm -rf "${WASM_FILENAME}"
+{%  endif %}
+{% endif %}
+# 3rd party service up
+{% if extra is defined %}
+{%   for service in extra %}
+sudo service {{ service }} start
+echo "{{ service }} started"
+{%   endfor %}{% else %}
+# there is no 3rd-party
+{% endif %}

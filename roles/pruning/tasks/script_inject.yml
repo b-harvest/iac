@@ -1,0 +1,14 @@
+---
+## using daily_pruning.sh.j2 template to generate daily_pruning.sh
+## need to inject env variables which are SEND, CHAIN_NAME, RPC_PORT, DATA_FOLDER) into daily_pruning.sh by jinja2 template
+## how to add multiple env_vars into jinja2 template in ansible task yaml?
+
+
+- name: "Generate pruning.sh"
+  template:
+    src: pruning.sh.j2
+    dest: /home/ubuntu/daily_pruning.sh
+    owner: '{{ ansible_user }}'
+    group: '{{ ansible_user }}'    
+    mode: 0755
+  become: yes
